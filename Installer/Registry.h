@@ -1,5 +1,5 @@
 ﻿/*******************************************************************************
- * Copyright (C) 2018 - 2020, winsoft666, <winsoft666@outlook.com>.
+ * Copyright (C) 2021 - 2026, winsoft666, <winsoft666@outlook.com>.
  *
  * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
  * EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
@@ -12,8 +12,8 @@
  * file.
  *******************************************************************************/
 
-#ifndef AKALI_REGISTRY_H__
-#define AKALI_REGISTRY_H__
+#ifndef REGISTRY_H_23DRF_
+#define REGISTRY_H_23DRF_
 #pragma once
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -57,6 +57,7 @@ class RegKey {
   HRESULT SetDWORDValue(LPCWSTR pszValueName, DWORD dwData);
   HRESULT SetBINARYValue(LPCWSTR pszValueName, const LPBYTE pbData, int cbData);
   HRESULT SetSZValue(LPCWSTR pszValueName, const std::wstring& strData);
+  HRESULT SetExpandSZValue(LPCWSTR pszValueName, const std::wstring& strData);
   HRESULT SetMultiSZValue(LPCWSTR pszValueName, const std::vector<std::wstring>& vStrValues);
 
   HRESULT GetSubKeys(std::vector<std::wstring>& subKeys);
@@ -83,4 +84,4 @@ class RegKey {
   static bool RegDeleteSubKeys(HKEY hKey, bool bPrefer64View);
   static BOOL RegDelSubKeysRecurse(HKEY hKeyRoot, LPTSTR lpSubKey, bool bPrefer64View);
 };
-#endif  // ! AKALI_REGISTRY_H__
+#endif  // ! REGISTRY_H_23DRF_

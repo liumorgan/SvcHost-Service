@@ -12,12 +12,30 @@
  * file.
  *******************************************************************************/
 
-#ifndef EVENT_LOG_H_S7261_
-#define EVENT_LOG_H_S7261_
+#ifndef SVCHOST_SERVICE_H_SX382_
+#define SVCHOST_SERVICE_H_SX382_
 #pragma once
 
 #include <windows.h>
-void EventLogTraceW(LPCWSTR pszServiceName, WORD wType, LPCWSTR lpFormat, ...);
-void EventLogTraceA(LPCSTR pszServiceName, WORD wType, LPCSTR lpFormat, ...);
 
-#endif //!EVENT_LOG_H_S7261_
+class SvcHostService {
+ public:
+  SvcHostService();
+  virtual ~SvcHostService();
+
+  virtual void Run();
+
+  void Pause();
+  void Resume();
+
+  void Stop();
+ protected:
+  bool IsPaused();
+  bool IsStopped();
+
+ protected:
+  HANDLE hPauseEvent_;
+  HANDLE hStopEvent_;
+  HANDLE hHasStoppedEvent_;
+};
+#endif  //!SVCHOST_SERVICE_H_SX382_

@@ -1,20 +1,40 @@
 ﻿/*******************************************************************************
-* Copyright (C) 2018 - 2020, winsoft666, <winsoft666@outlook.com>.
-*
-* THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
-* EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
-* WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
-*
-* Expect bugs
-*
-* Please use and enjoy. Please let me know of any bugs/improvements
-* that you have found/implemented and I will fix/incorporate them into this
-* file.
-*******************************************************************************/
-#include "Registry.h"
+ * Copyright (C) 2021 - 2026, winsoft666, <winsoft666@outlook.com>.
+ *
+ * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+ * EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * Expect bugs
+ *
+ * Please use and enjoy. Please let me know of any bugs/improvements
+ * that you have found/implemented and I will fix/incorporate them into this
+ * file.
+ *******************************************************************************/
 
+#include "Registry.h"
 #include <process.h>
 #include <strsafe.h>
+
+namespace {
+bool IsWin64() {
+  typedef BOOL(WINAPI * LPFN_ISWOW64PROCESS)(HANDLE, PBOOL);
+  static LPFN_ISWOW64PROCESS fnIsWow64Process = NULL;
+  BOOL bIsWow64 = FALSE;
+
+  if (NULL == fnIsWow64Process) {
+    HMODULE h = GetModuleHandleW(L"kernel32");
+    if (h)
+      fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(h, "IsWow64Process");
+  }
+
+  if (NULL != fnIsWow64Process) {
+    fnIsWow64Process(GetCurrentProcess(), &bIsWow64);
+  }
+
+  return bIsWow64 == 1;
+}
+}  // namespace
 
 RegKey::RegKey(HKEY hkeyRoot, LPCWSTR pszSubKey)
     : m_hkeyRoot(hkeyRoot)
@@ -208,7 +228,8 @@ HRESULT RegKey::GetSZValue(LPCWSTR pszValueName,
   }
 
   strValue = szTemp;
-  SAFE_DELETE_ARRAY(szTemp);
+  if (szTemp)
+    delete[] szTemp;
 
   return hr;
 }
@@ -260,6 +281,11 @@ HRESULT RegKey::SetBINARYValue(LPCWSTR pszValueName,
 
 HRESULT RegKey::SetSZValue(LPCWSTR pszValueName, const std::wstring& strData) {
   return SetValue(pszValueName, REG_SZ, (const LPBYTE)strData.c_str(),
+                  (strData.length()) * sizeof(WCHAR));
+}
+
+HRESULT RegKey::SetExpandSZValue(LPCWSTR pszValueName, const std::wstring& strData) {
+  return SetValue(pszValueName, REG_EXPAND_SZ, (const LPBYTE)strData.c_str(),
                   (strData.length()) * sizeof(WCHAR));
 }
 
@@ -407,6 +433,35 @@ unsigned int _stdcall RegKey::NotifyWaitThreadProc(LPVOID pvParam) {
   }
 
   return 0;
+}
+
+bool RegKey::RegDeleteKey32_64(HKEY hKey, LPCWSTR pszSubKey, bool bPrefer64View) {
+  REGSAM rsam = (bPrefer64View && IsWin64()) ? KEY_WOW64_64KEY : KEY_WOW64_32KEY;
+  HMODULE hAdvAPI32 = LoadLibrary(TEXT("AdvAPI32.dll"));
+
+  if (!hAdvAPI32)
+    return false;
+
+  LSTATUS ls;
+  typedef LONG(WINAPI * PFN_RegDeleteKeyEx)(HKEY hKey, LPCWSTR lpSubKey, REGSAM samDesired,
+                                            DWORD Reserved);
+#if (defined UNICODE) || (defined _UNICODE)
+#define RegDeleteKeyExFuncName "RegDeleteKeyExW"
+#else
+#define RegDeleteKeyExFuncName "RegDeleteKeyExA"
+#endif
+  PFN_RegDeleteKeyEx _RegDeleteKeyEx =
+      (PFN_RegDeleteKeyEx)GetProcAddress(hAdvAPI32, RegDeleteKeyExFuncName);
+
+  if (_RegDeleteKeyEx) {
+    ls = _RegDeleteKeyEx(hKey, pszSubKey, rsam, 0);
+    FreeLibrary(hAdvAPI32);
+  }
+  else {
+    ls = RegDeleteKey(hKey, pszSubKey);
+  }
+
+  return (ls == ERROR_SUCCESS);
 }
 
 bool RegKey::RegDeleteSubKeys(HKEY hKey, bool bPrefer64View) {
