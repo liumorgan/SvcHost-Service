@@ -2,23 +2,13 @@
 An windows service that runs in svchost.exe.
 
 # Service Project
-`Service` project is a SvcHost-based service framework, you only need add your custom code to `SvcHostService::Run()` function:
+`Service` project is a SvcHost-based service framework, you only need add your custom code to `ServiceMain` function:
 ```c++
-void SvcHostService::Run() {
-  OutputDebugStringW(L"[svcs] Run\n");
+// ServiceMain.cpp
 
-  while (true) {
-    if (IsStopped())
-      break;
-
-    // Add your custom code to here!
-    //
-    // ......
-  }
-
-  if (hHasStoppedEvent_) {
-    SetEvent(hHasStoppedEvent_);
-  }
+void ServiceMain(HANDLE hPauseEvent, HANDLE hStopEvent) {
+  // Add your custom code to here!
+  //
 }
 ```
 
@@ -26,6 +16,11 @@ void SvcHostService::Run() {
 `Install` project is a sample about how to install/uninstall/start/stop SvcHost-based service.
 
 The core function provide by `ServiceInstaller` class.
+
+# Test Project
+`Test` project is a test project that load dll and call DllMain function directly.
+
+# Screenshot
 
 ![ProcessExplorer.png](Screenshot/ProcessExplorer.png)
 ![Service.png](Screenshot/Service.png)

@@ -9,23 +9,6 @@
 #endif
 
 SvcHostService* gService = NULL;
-SERVICE_STATUS_HANDLE gServiceStatusHandle = NULL;
-
-namespace {
-bool UpdateServiceRunningStatus(DWORD runningStatus) {
-  if (!gServiceStatusHandle)
-    return false;
-
-  SERVICE_STATUS serviceStatus = {
-      SERVICE_WIN32_SHARE_PROCESS,
-      SERVICE_START_PENDING,
-      SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN | SERVICE_ACCEPT_PAUSE_CONTINUE};
-
-  serviceStatus.dwCurrentState = runningStatus;
-
-  return !!SetServiceStatus(gServiceStatusHandle, &serviceStatus);
-}
-}  // namespace
 
 // Dll Main
 //
@@ -50,7 +33,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
   return TRUE;
 }
 
-
 static DWORD WINAPI ServiceCtrlHandler(DWORD dwControl,
                                        DWORD dwEventType,
                                        LPVOID lpEventData,
@@ -64,7 +46,7 @@ static DWORD WINAPI ServiceCtrlHandler(DWORD dwControl,
         pService->Stop();
       }
 
-      if (!UpdateServiceRunningStatus(SERVICE_STOPPED)) {
+      if (!SvcHostService::UpdateServiceRunningStatus(SERVICE_STOPPED)) {
       }
       break;
     case SERVICE_CONTROL_SHUTDOWN:
@@ -74,7 +56,7 @@ static DWORD WINAPI ServiceCtrlHandler(DWORD dwControl,
         delete pService;
       }
 
-      if (!UpdateServiceRunningStatus(SERVICE_STOPPED)) {
+      if (!SvcHostService::UpdateServiceRunningStatus(SERVICE_STOPPED)) {
       }
       break;
     case SERVICE_CONTROL_PAUSE:
@@ -82,7 +64,7 @@ static DWORD WINAPI ServiceCtrlHandler(DWORD dwControl,
       if (pService) {
         pService->Pause();
       }
-      if (!UpdateServiceRunningStatus(SERVICE_PAUSED)) {
+      if (!SvcHostService::UpdateServiceRunningStatus(SERVICE_PAUSED)) {
       }
       break;
     case SERVICE_CONTROL_CONTINUE:
@@ -90,7 +72,7 @@ static DWORD WINAPI ServiceCtrlHandler(DWORD dwControl,
       if (pService) {
         pService->Resume();
       }
-      if (!UpdateServiceRunningStatus(SERVICE_RUNNING)) {
+      if (!SvcHostService::UpdateServiceRunningStatus(SERVICE_RUNNING)) {
       }
       break;
     default:
@@ -104,17 +86,60 @@ static DWORD WINAPI ServiceCtrlHandler(DWORD dwControl,
 //
 extern "C" SERVICE_API void ServiceMain(DWORD dwArgc, LPCWSTR* lpszArgv) {
   WCHAR szServiceName[MAX_PATH] = {0};
-  StringCchCopyW(szServiceName, MAX_PATH, lpszArgv[0]);
+  if (lpszArgv[0]) {
+    StringCchCopyW(szServiceName, MAX_PATH, lpszArgv[0]);
+  }
 
-  gServiceStatusHandle =
-      RegisterServiceCtrlHandlerExW(szServiceName, ServiceCtrlHandler, NULL);
-  if (!gServiceStatusHandle) {
+  if (wcslen(szServiceName) == 0) {
+    OutputDebugStringW(L"[svcs] Service name is empty!\n");
     return;
   }
 
-  UpdateServiceRunningStatus(SERVICE_RUNNING);
+  SvcHostService::ServiceStatusHandle =
+      RegisterServiceCtrlHandlerExW(szServiceName, ServiceCtrlHandler, NULL);
+  if (!SvcHostService::ServiceStatusHandle) {
+    OutputDebugStringW(L"[svcs] RegisterServiceCtrlHandlerExW failed!\n");
+    return;
+  }
+
+  SvcHostService::UpdateServiceRunningStatus(SERVICE_RUNNING);
 
   if (gService) {
     gService->Run();
+  }
+}
+
+// Only for test
+//
+extern "C" SERVICE_API void __ServiceMainTest(DWORD dwArgc, LPCWSTR* lpszArgv) {
+  WCHAR szCmd[MAX_PATH] = {0};
+  if (lpszArgv[0]) {
+    StringCchCopyW(szCmd, MAX_PATH, lpszArgv[0]);
+  }
+
+  if (wcslen(szCmd) == 0) {
+    OutputDebugStringW(L"[svcs] command is empty!\n");
+    return;
+  }
+
+  if (wcscmp(szCmd, L"start") == 0) {
+    if (gService) {
+      gService->Run();
+    }
+  }
+  else if (wcscmp(szCmd, L"pause") == 0) {
+    if (gService) {
+      gService->Pause();
+    }
+  }
+  else if (wcscmp(szCmd, L"resume") == 0) {
+    if (gService) {
+      gService->Resume();
+    }
+  }
+  else if (wcscmp(szCmd, L"stop") == 0) {
+    if (gService) {
+      gService->Stop();
+    }
   }
 }

@@ -29,6 +29,10 @@ class SvcHostService {
   void Resume();
 
   void Stop();
+
+ public:
+  static SERVICE_STATUS_HANDLE ServiceStatusHandle;
+  static bool UpdateServiceRunningStatus(DWORD runningStatus);
  protected:
   bool IsPaused();
   bool IsStopped();

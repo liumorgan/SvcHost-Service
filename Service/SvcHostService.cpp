@@ -14,6 +14,24 @@
 
 #include "SvcHostService.h"
 #include "EventLog.h"
+#include "ServiceMain.h"
+
+SERVICE_STATUS_HANDLE SvcHostService::ServiceStatusHandle = NULL;
+
+bool SvcHostService::UpdateServiceRunningStatus(DWORD runningStatus) {
+  if (!SvcHostService::ServiceStatusHandle)
+    return false;
+
+  SERVICE_STATUS serviceStatus = {
+      SERVICE_WIN32_SHARE_PROCESS, SERVICE_START_PENDING,
+      SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN |
+          SERVICE_ACCEPT_PAUSE_CONTINUE};
+
+  serviceStatus.dwCurrentState = runningStatus;
+
+  return !!SetServiceStatus(SvcHostService::ServiceStatusHandle,
+                            &serviceStatus);
+}
 
 SvcHostService::SvcHostService() {
   OutputDebugStringW(L"[svcs] Service\n");
@@ -49,13 +67,12 @@ SvcHostService::~SvcHostService() {
 void SvcHostService::Run() {
   OutputDebugStringW(L"[svcs] Run\n");
 
-  while (true) {
-    if (IsStopped())
-      break;
+  ServiceMain(hPauseEvent_, hStopEvent_);
 
-    // Add your custom code to here!
-    //
-    // ......
+  if (!IsStopped()) {
+    if (hStopEvent_)
+      SetEvent(hStopEvent_);
+    UpdateServiceRunningStatus(SERVICE_STOPPED);
   }
 
   if (hHasStoppedEvent_) {
