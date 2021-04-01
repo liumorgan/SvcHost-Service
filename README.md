@@ -2,7 +2,7 @@
 An windows service that runs in svchost.exe.
 
 # Service Project
-`Service` project is a SvcHost-based service framework, you only need add your custom code to `ServiceMain` function:
+`Service` project is a SvcHost-based service framework, you can add your custom code to `ServiceMain` function(like `WinMain` or `main`):
 ```c++
 // ServiceMain.cpp
 
